@@ -1,3 +1,5 @@
+require 'ostruct'
+
 PATTERNS = {
   :group => /\[\w+\]/,
   :setting => /([a-zA-Z_><]+) = .*/,
@@ -108,15 +110,28 @@ end
 
 def buildMap rules
   map = {}
+  group = nil
   rules.each do |rule|
     if rule[:type] == :group
       map[rule[:value]] = {}
+      group = rule[:value]
+    elsif rule[:type] == :setting
+      if rule[:override].empty?
+        map[group][rule[:key]] = { :default => rule[:value] }
+      else
+        map[group][rule[:key]][rule[:override].to_sym] = rule[:value] 
+      end
     end
   end
   return map
 end
 
-rules = parseFile "server.conf"
-p (buildMap rules)
-#rules.each do |r| p r end
+def isHash v
+  return v.instance_of?(Hash)
+end
 
+
+file_path = "server.conf"
+rules = parseFile file_path
+m = buildMap rules
+p m
