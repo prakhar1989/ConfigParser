@@ -32,15 +32,22 @@ def parseValue value
 end
 
 def parseSetting line
-  startOverride, startValue = false
+  startOverride, startValue, startString = false
   key = []
   value = []
   override = []
   line.split("").each do |c|
     if c == ";"
       break
+    elsif c == "\""
+      startString = !startString
+      value.push "\""
     elsif c.strip.length == 0  # whitespace
-      next
+      if startString 
+        value.push c
+      else
+        next
+      end
     elsif c == "<"
       startOverride = true
     elsif c == ">"
@@ -71,9 +78,9 @@ end
  
 def lineType line
   if ( line =~ PATTERNS[:group])
-    puts parseGroup(line)
+    return parseGroup(line)
   elsif ( line =~ PATTERNS[:setting] )
-    puts parseSetting(line)
+    return parseSetting(line)
   elsif (line =~ PATTERNS[:comment] )
     return nil
   else
@@ -83,16 +90,33 @@ end
 
 
 def parseFile filename
+  rules = []
   File.open(filename, "r") do |f|
     f.each_line do |line|
       line = line.chomp
       if line.length > 0 
-        lineType line
+        rule = lineType line
+        if !rule.nil?
+          rules.push rule
+        end
       end
     end
   end
+  return rules
 end
 
 
-parseFile "server.conf"
-#puts parseSetting "path<staging> = /srv/uploads/; This is another comment"
+def buildMap rules
+  map = {}
+  rules.each do |rule|
+    if rule[:type] == :group
+      map[rule[:value]] = {}
+    end
+  end
+  return map
+end
+
+rules = parseFile "server.conf"
+p (buildMap rules)
+#rules.each do |r| p r end
+
