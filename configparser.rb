@@ -6,6 +6,12 @@ PATTERNS = {
   :comment => /^;/
 }
 
+class BetterStruct < OpenStruct
+  def inspect
+    return self.to_h().to_s
+  end
+end
+
 def parseGroup line
   match = /\[(\w+)\]/.match(line)
   if match
@@ -130,8 +136,29 @@ def isHash v
   return v.instance_of?(Hash)
 end
 
+def buildStruct(map, overrides)
+  if map.has_key? :default # reached the bottom of the rec
+    overrides = ([:default] + overrides).map { |c| c.to_sym }
+    value = nil
+    overrides.each do |o|
+      if !map[o].nil?
+        value = map[o]
+      end
+    end
+    return value
+  else
+    struct = BetterStruct.new(map)
+    map.each do |k, v|
+      if isHash(v)
+        struct[k] = buildStruct(v, overrides)
+      end
+    end
+    return struct
+  end
+end
 
-file_path = "server.conf"
-rules = parseFile file_path
-m = buildMap rules
-p m
+def load_config(file_path, overrides=[])
+  rules = parseFile file_path
+  map = buildMap rules
+  return buildStruct(map, overrides)
+end
