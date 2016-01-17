@@ -33,6 +33,8 @@ Finished tests in 0.007693s, 1039.9064 tests/s, 7799.2981 assertions/s.
 ruby -v: ruby 2.1.4p265 (2014-10-27 revision 48166) [x86_64-darwin15.0]
 ```
 
+> NOTE: In the specification (`misc/exercise.pdf`) it is mentioned if multiple overrides are enabled, the one defined last will have priority. However, in the example provided, `CONFIG.ftp[:path]` is wrongly returning the value `/etc/var/uploads` instead of `/srv/var/tmp` since `production` setting is provided **after** `ubuntu` setting. In my code this has been correctly handled.
+
 
 ##### Sample Output
 
@@ -48,7 +50,7 @@ $ pry
 => 2147483648
 
 [4] pry(main)> CONFIG.ftp.name
-=> "\"hello there, ftp uploading\""
+=> "hello there, ftp uploading"
 
 [5] pry(main)> CONFIG.http.params
 => ["array", "of", "values"]

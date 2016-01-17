@@ -26,7 +26,7 @@ module ConfigParser
     :comment => /^;/,                    # any line that starts with a ;
     :number  => /^[0-9]+$/,              # 0-9s
     :float   => /^[0-9]+\.[0-9]+$/,      # 0-9 . 0-9
-    :string  => /^".*"$/,                # any set of chars enclosed b/w quotes
+    :string  => /^"(.*)"$/,                # any set of chars enclosed b/w quotes
     :array   => /,/,                     # has a comma?
     :yes     => ["yes","true","1"].to_set,
     :no      => ["no","false","0"].to_set
@@ -70,7 +70,8 @@ module ConfigParser
         elsif value =~ PATTERNS[:float]
           return value.to_f
         elsif value =~ PATTERNS[:string]
-          return value
+          match = PATTERNS[:string].match(value)
+          return match[1]
         elsif value =~ PATTERNS[:array]
           return value.split(',').map { |x| x.strip }
         else

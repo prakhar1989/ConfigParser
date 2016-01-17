@@ -16,10 +16,10 @@ class TestConfigParser < Test::Unit::TestCase
     ## ftp 
     assert_equal(config.ftp.path, "/tmp/")
     assert_equal(config.ftp.enabled, false)
-    assert_equal(config.ftp.name, "\"hello there, ftp uploading\"")
+    assert_equal(config.ftp.name, "hello there, ftp uploading")
 
     # http
-    assert_equal(config.http.name, "\"http uploading\"")
+    assert_equal(config.http.name, "http uploading")
     assert_equal(config.http.path, "/tmp/")
     assert_equal(config.http.params, ["array", "of", "values"])
   end
@@ -37,10 +37,10 @@ class TestConfigParser < Test::Unit::TestCase
     ## ftp 
     assert_equal(config.ftp.path, "/srv/uploads/")
     assert_equal(config.ftp.enabled, false)
-    assert_equal(config.ftp.name, "\"hello there, ftp uploading\"")
+    assert_equal(config.ftp.name, "hello there, ftp uploading")
 
     # http
-    assert_equal(config.http.name, "\"http uploading\"")
+    assert_equal(config.http.name, "http uploading")
     assert_equal(config.http.path, "/srv/uploads/")
     assert_equal(config.http.params, ["array", "of", "values"])
   end
@@ -58,10 +58,10 @@ class TestConfigParser < Test::Unit::TestCase
     ## ftp 
     assert_equal(config.ftp.path, "/etc/var/uploads/")
     assert_equal(config.ftp.enabled, false)
-    assert_equal(config.ftp.name, "\"hello there, ftp uploading\"")
+    assert_equal(config.ftp.name, "hello there, ftp uploading")
 
     # http
-    assert_equal(config.http.name, "\"http uploading\"")
+    assert_equal(config.http.name, "http uploading")
     assert_equal(config.http.path, "/srv/uploads/")
     assert_equal(config.http.params, ["array", "of", "values"])
   end

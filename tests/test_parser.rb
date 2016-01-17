@@ -28,8 +28,8 @@ class TestConfigParser < Test::Unit::TestCase
     assert_equal(ConfigParser::Parser.parseValue("0"), false)
     assert_equal(ConfigParser::Parser.parseValue("no"), false)
     assert_equal(ConfigParser::Parser.parseValue("val1,val2"), ["val1", "val2"])
-    assert_equal(ConfigParser::Parser.parseValue("\"hello world\""), "\"hello world\"")
-    assert_equal(ConfigParser::Parser.parseValue("\"hello,world\""), "\"hello,world\"")
+    assert_equal(ConfigParser::Parser.parseValue("\"hello world\""), "hello world")
+    assert_equal(ConfigParser::Parser.parseValue("\"hello,world\""), "hello,world")
     assert_equal(ConfigParser::Parser.parseValue("some_value"), "some_value")
   end
 
@@ -56,17 +56,17 @@ class TestConfigParser < Test::Unit::TestCase
     # test string
     assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey hi\"", 1),
                  {:type => :setting, :key => "msg", 
-                  :value => "\"hey hi\"", :override => ""})
+                  :value => "hey hi", :override => ""})
 
     # test space inside string
     assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey     hi\"", 1),
                  {:type => :setting, :key => "msg", 
-                  :value => "\"hey     hi\"", :override => ""})
+                  :value => "hey     hi", :override => ""})
 
     # test comment inside string
     assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey;hi\"", 1),
                  {:type => :setting, :key => "msg", 
-                  :value => "\"hey;hi\"", :override => ""})
+                  :value => "hey;hi", :override => ""})
 
     # test override
     assert_equal(ConfigParser::Parser.parseSetting("name<first> = alice; hello", 1),
