@@ -1,8 +1,9 @@
 require 'ostruct'
+require 'set'
 
 module ConfigParser 
 
-  # a bunch of regex patterns for parsing entities
+  # a bunch of regex patterns used for parsing entities in the script
   # assumptions about lexical rules are provided as comments
   PATTERNS = {
     :group   => /\[(\w+)\]/,             # group name: any valid word
@@ -11,9 +12,13 @@ module ConfigParser
     :number  => /^[0-9]+$/,              # 0-9s
     :float   => /^[0-9]+\.[0-9]+$/,      # 0-9 . 0-9
     :string  => /^".*"$/,                # any set of chars enclosed b/w quotes
-    :array   => /,/                      # has a comma?
+    :array   => /,/,                     # has a comma?
+    :yes     => ["yes","true","1"].to_set,
+    :no      => ["no","false","0"].to_set
   }
 
+  # inheriting the OpenStruct class and overriding the inspect method
+  # for hash output. (safer than monkey-patching IMHO)
   class BetterStruct < OpenStruct
     def inspect
       return self.to_h().to_s
@@ -21,7 +26,9 @@ module ConfigParser
   end
 
   class Parser
-
+    # open up self's singleton so as to provide
+    # static method. This is to done to keep as close to the 
+    # expected API as per the spec.
     class << self
 
       # takes a line and returns a rule of the form 
@@ -36,12 +43,12 @@ module ConfigParser
         end
       end
 
-      # takes a configration value and returns the value in correct type
+      # takes a configuration value and returns the value in correct type
       # eg. parseValue("123") -> 123 etc.
       def parseValue(value)
-        if ["no", "false", "0"].include? value
+        if PATTERNS[:no].include? value
           return false
-        elsif ["yes", "true", "1"].include? value
+        elsif PATTERNS[:yes].include? value
           return true
         elsif  value =~ PATTERNS[:number]
           return value.to_i
@@ -56,47 +63,61 @@ module ConfigParser
         end
       end
 
+      # takes an configuration setting and returns a hash map
+      # with key, value and override settings parsed
       def parseSetting(line, number)
         startOverride, startValue, startString = false
-        key = []
-        value = []
-        override = []
+        key, value, override = [], [], []
+
+        # behaves as a state-machine that inspects each character
+        # and adds it to key, value or override depdending on the 
+        # state it is currently in
         line.split("").each do |c|
-          if c == ";"
-            break
-          elsif c == "\""
+          if c == ";"                         # found a comment       
+            if startString                    # if we are inside a string
+              value.push(c)                   # add the whitespace
+            else                              # else stop parsing
+              break
+            end
+          elsif c == "\""                     # start parsing string
             startString = !startString
             value.push "\""
-          elsif c.strip.length == 0  # whitespace
-            if startString 
-              value.push c
-            else
+          elsif c.strip.empty?                # found a whitespace 
+            if startString                    # if we are inside a string
+              value.push(c)                   # add the whitespace
+            else                              # else ignore
               next
             end
-          elsif c == "<"
+          elsif c == "<"                      # start override block
             startOverride = true
           elsif c == ">"
-            startOverride = false
+            startOverride = false             # stop override block
           elsif c == "="
-            startValue = true
-          else
-            if startOverride 
-              override.push c
+            startValue = true                 # start parsing value
+          else                                # push char depending on state                 
+            if startOverride
+              override.push(c)
             elsif startValue
-              value.push c
+              value.push(c)
             else
-              key.push c
+              key.push(c)
             end
           end
         end
 
+        # none of these should be empty
+        if (key.empty? || value.empty? || startString)
+          raise SyntaxError.new(true), "Parse error in line #{number + 1}"
+        end
+
+        # obtained the `typed` value from the parseValue function
         value = parseValue(value.join())
 
         return {
-          :type => :setting, 
-          :key => key.join(), 
-          :value => value,
-          :override => override.join() 
+          :type     => :setting,
+          :key      => key.join(),
+          :value    => value,
+          :override => override.join()
         }
       end
 

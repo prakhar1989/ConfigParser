@@ -32,4 +32,65 @@ class TestConfigParser < Test::Unit::TestCase
     assert_equal(ConfigParser::Parser.parseValue("\"hello,world\""), "\"hello,world\"")
     assert_equal(ConfigParser::Parser.parseValue("some_value"), "some_value")
   end
+
+  def test_parseSetting()
+    assert_equal(ConfigParser::Parser.parseSetting("name = alice", 1),
+                 {:type => :setting, :key => "name", 
+                  :value => "alice", :override => ""})
+
+    # no whitespace test
+    assert_equal(ConfigParser::Parser.parseSetting("name=alice", 1),
+                 {:type => :setting, :key => "name", 
+                  :value => "alice", :override => ""})
+
+    # extra white space test
+    assert_equal(ConfigParser::Parser.parseSetting("name     =  alice", 1),
+                 {:type => :setting, :key => "name", 
+                  :value => "alice", :override => ""})
+
+    # test comment
+    assert_equal(ConfigParser::Parser.parseSetting("name = alice; hello", 1),
+                 {:type => :setting, :key => "name", 
+                  :value => "alice", :override => ""})
+
+    # test string
+    assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey hi\"", 1),
+                 {:type => :setting, :key => "msg", 
+                  :value => "\"hey hi\"", :override => ""})
+
+    # test space inside string
+    assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey     hi\"", 1),
+                 {:type => :setting, :key => "msg", 
+                  :value => "\"hey     hi\"", :override => ""})
+
+    # test comment inside string
+    assert_equal(ConfigParser::Parser.parseSetting("msg = \"hey;hi\"", 1),
+                 {:type => :setting, :key => "msg", 
+                  :value => "\"hey;hi\"", :override => ""})
+
+    # test override
+    assert_equal(ConfigParser::Parser.parseSetting("name<first> = alice; hello", 1),
+                 {:type => :setting, :key => "name", 
+                  :value => "alice", :override => "first"})
+  end
+
+  def test_parseSetting_should_raise_exception()
+    # no =
+    exception = assert_raise(SyntaxError) do
+      ConfigParser::Parser.parseSetting("some random string", 0)
+    end
+    assert_equal(exception.message, "Parse error in line 1")
+
+    # wrong placement of ;
+    exception = assert_raise(SyntaxError) do
+      ConfigParser::Parser.parseSetting("name ;= value", 0)
+    end
+    assert_equal(exception.message, "Parse error in line 1")
+
+    # missing " in string
+    exception = assert_raise(SyntaxError) do
+      ConfigParser::Parser.parseSetting("name = \"hello", 0)
+    end
+    assert_equal(exception.message, "Parse error in line 1")
+  end
 end
