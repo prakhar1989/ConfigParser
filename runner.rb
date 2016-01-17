@@ -1,8 +1,11 @@
-### testing the parser
 require './lib/configparser.rb'
 
-#CONFIG = ConfigParser::Parser.load_config("./conf/temp.conf")
-CONFIG = ConfigParser::Parser.load_config("./conf/server.conf")
+begin 
+  CONFIG = ConfigParser::Parser.load_config("./conf/temp.conf")
+rescue SyntaxError => msg
+  puts "Unable to read file: #{msg}"
+  puts "Change the filename to server.conf to see this in action"
+  exit
+end
 
 puts CONFIG
-

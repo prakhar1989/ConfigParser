@@ -1,3 +1,18 @@
+# A module to parse Config Files. 
+#
+# Usage:
+# CONFIG = ConfigParser::Parser.load_config("server.conf", overrides=["ubuntu",:production])
+# Throws a SyntaxError (with line number) if parsing barfs. 
+# begin 
+#  CONFIG = ConfigParser::Parser.load_config("./conf/temp.conf")
+# rescue SyntaxError => msg
+#  puts "Unable to read file: #{msg}"
+#  exit
+# end
+# 
+# Returns an object that queried with configurations keys as method names
+# CONFIG.ftp.path => /var/www/html
+
 require 'ostruct'
 require 'set'
 
@@ -27,8 +42,8 @@ module ConfigParser
 
   class Parser
     # open up self's singleton so as to provide
-    # static method. This is to done to keep as close to the 
-    # expected API as per the spec.
+    # static methods on the class. This is to done to keep 
+    # as close to the expected API as per the spec.
     class << self
 
       # takes a line and returns a rule of the form 
@@ -70,7 +85,7 @@ module ConfigParser
         key, value, override = [], [], []
 
         # behaves as a state-machine that inspects each character
-        # and adds it to key, value or override depdending on the 
+        # and adds it to key, value or override depending on the 
         # state it is currently in
         line.split("").each do |c|
           if c == ";"                         # found a comment       
@@ -172,22 +187,25 @@ module ConfigParser
         return map
       end
 
+      # takes a map of (groups -> settings) and overrides 
+      # Returns an object of type BetterStruct
       def buildStruct(map, overrides)
-        # reached the bottom of the recursion
+        # recursion base case
         if map.has_key? :default
           overrides = ([:default] + overrides).map { |c| c.to_sym }
           value = nil
-          overrides.each do |o|
+          overrides.each do |o| # pick the last override
             if !map[o].nil?
               value = map[o]
             end
           end
           return value
+
         # recursively transform nested hashmaps
         else
           struct = BetterStruct.new(map)
           map.each do |k, v|
-            if v.instance_of?(Hash)
+            if v.instance_of? Hash
               struct[k] = buildStruct(v, overrides)
             end
           end
@@ -195,6 +213,7 @@ module ConfigParser
         end
       end
 
+      # the main method with which the user interacts
       def load_config(file_path, overrides=[])
         rules = parseFile(file_path)
         map = buildMap(rules)
@@ -202,7 +221,5 @@ module ConfigParser
       end
 
     end
-
   end
-
 end
