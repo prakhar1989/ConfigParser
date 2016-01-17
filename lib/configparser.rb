@@ -2,10 +2,16 @@ require 'ostruct'
 
 module ConfigParser 
 
+  # a bunch of regex patterns for parsing entities
+  # assumptions about lexical rules are provided as comments
   PATTERNS = {
-    :group => /\[\w+\]/,
-    :setting => /([a-zA-Z_><]+) = .*/,
-    :comment => /^;/
+    :group   => /\[(\w+)\]/,             # group name: any valid word
+    :setting => /([a-zA-Z_><]+) = .*/,   # setting configration: key = <anything>
+    :comment => /^;/,                    # any line that starts with a ;
+    :number  => /^[0-9]+$/,              # 0-9s
+    :float   => /^[0-9]+\.[0-9]+$/,      # 0-9 . 0-9
+    :string  => /^".*"$/,                # any set of chars enclosed b/w quotes
+    :array   => /,/                      # has a comma?
   }
 
   class BetterStruct < OpenStruct
@@ -18,34 +24,39 @@ module ConfigParser
 
     class << self
 
-      def parseGroup line
-        match = /\[(\w+)\]/.match(line)
+      # takes a line and returns a rule of the form 
+      # {:type => :group, :value => group_name }
+      # raises exception otherwise
+      def parseGroup(line, number)
+        match = PATTERNS[:group].match(line)
         if match
           return {:type => :group, :value => match[1] }
         else
-          raise SyntaxError.new(true), "error reading group"
+          raise SyntaxError.new(true), "Parse error in line #{number + 1}"
         end
       end
 
-      def parseValue value
-        if value == "no" or value == "false" or value == "0"
+      # takes a configration value and returns the value in correct type
+      # eg. parseValue("123") -> 123 etc.
+      def parseValue(value)
+        if ["no", "false", "0"].include? value
           return false
-        elsif value == "yes" or value == "true" or value == "1"
+        elsif ["yes", "true", "1"].include? value
           return true
-        elsif  value =~ /^[0-9]+$/
+        elsif  value =~ PATTERNS[:number]
           return value.to_i
-        elsif value =~ /^[0-9]+\.[0-9]+$/
+        elsif value =~ PATTERNS[:float]
           return value.to_f
-        elsif value =~ /^".*"$/
+        elsif value =~ PATTERNS[:string]
           return value
-        elsif value =~ /,/
+        elsif value =~ PATTERNS[:array]
           return value.split(',').map { |x| x.strip }
         else
           return value
         end
       end
 
-      def parseSetting line
+      def parseSetting(line, number)
         startOverride, startValue, startString = false
         key = []
         value = []
@@ -79,7 +90,7 @@ module ConfigParser
           end
         end
 
-        value = parseValue value.join()
+        value = parseValue(value.join())
 
         return {
           :type => :setting, 
@@ -89,28 +100,30 @@ module ConfigParser
         }
       end
 
-
-      def lineType line
-        if ( line =~ PATTERNS[:group])
-          return parseGroup(line)
-        elsif ( line =~ PATTERNS[:setting] )
-          return parseSetting(line)
-        elsif (line =~ PATTERNS[:comment] )
+      # generates a rule for a line, takes an additional line number 
+      # to generate better exceptions
+      def generateRule(line, number)
+        if line =~ PATTERNS[:group]
+          return parseGroup(line, number)
+        elsif line =~ PATTERNS[:setting]
+          return parseSetting(line, number)
+        elsif line =~ PATTERNS[:comment]
           return nil
         else
-          raise SyntaxError.new(true), "parse error"
+          raise SyntaxError.new(true), "Parse error in line #{number + 1}"
         end
       end
 
-      def parseFile filename
+      # reads in file and generates rules 
+      def parseFile(filename)
         rules = []
         File.open(filename, "r") do |f|
-          f.each_line do |line|
+          f.each_line.with_index do |line, idx|
             line = line.chomp
-            if line.length > 0 
-              rule = lineType line
+            if !line.empty?
+              rule = generateRule(line, idx)
               if !rule.nil?
-                rules.push rule
+                rules.push(rule)
               end
             end
           end
@@ -118,7 +131,9 @@ module ConfigParser
         return rules
       end
 
-      def buildMap rules
+      # takes a set of rules and returns a hashmap
+      # where headers are keys and settings are values
+      def buildMap(rules)
         map = {}
         group = nil
         rules.each do |rule|
@@ -136,12 +151,9 @@ module ConfigParser
         return map
       end
 
-      def isHash v
-        return v.instance_of?(Hash)
-      end
-
       def buildStruct(map, overrides)
-        if map.has_key? :default # reached the bottom of the rec
+        # reached the bottom of the recursion
+        if map.has_key? :default
           overrides = ([:default] + overrides).map { |c| c.to_sym }
           value = nil
           overrides.each do |o|
@@ -150,10 +162,11 @@ module ConfigParser
             end
           end
           return value
+        # recursively transform nested hashmaps
         else
           struct = BetterStruct.new(map)
           map.each do |k, v|
-            if isHash(v)
+            if v.instance_of?(Hash)
               struct[k] = buildStruct(v, overrides)
             end
           end
@@ -162,8 +175,8 @@ module ConfigParser
       end
 
       def load_config(file_path, overrides=[])
-        rules = parseFile file_path
-        map = buildMap rules
+        rules = parseFile(file_path)
+        map = buildMap(rules)
         return buildStruct(map, overrides)
       end
 
